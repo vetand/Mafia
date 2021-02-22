@@ -1,0 +1,2 @@
+NumPy==1.20.0
+grpcio-tools==1.35.0

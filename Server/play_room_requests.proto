@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package play_room_requests;
+
+service PlayRoomRequests {
+  rpc StartPlay(StartPlayRequest) returns (NewRoleAssignment) {}
+
+  rpc Heartbeat(StateRequest) returns (StateResponse) {}
+
+  rpc SetAction(Action) returns (NewRoleAssignment) {}
+}
+
+message StateRequest {
+  string name = 1;
+}
+
+message Action {
+  int32 day = 1;
+  bool state = 2;
+  string name = 3;
+  string type = 4; // "none", "kill" or "end"
+  string who = 5;
+}
+
+message StateResponse {
+  bool game_finished = 1;
+  int32 day_number = 2;
+  bool state = 3; // day or night
+  map<string, bool> alive = 4; // <player name, alive or not>
+  map<string, Action> actions = 5; // <player name, action>
+  map<string, string> roles = 6; // <player name, "mafia" ..., "unknown">
+  double time_till_next_event = 7;
+}
+
+message StartPlayRequest {
+  string name = 1;
+}
+
+message NewRoleAssignment {
+  string role = 1;
+}
+
+
+

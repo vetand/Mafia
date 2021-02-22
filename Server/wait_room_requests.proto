@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package wait_room_requests;
+
+service WaitRoomReqtests {
+  rpc AskProgress(AskProgressRequest) returns (SessionLoadProgress) {}
+
+  rpc Register(RegisterRequest) returns (RegisterResponse) {}
+
+  rpc AskPlayPort(PortRequest) returns (PortResponse) {}
+
+  rpc ReturnRoom(EndSession) returns (EndSession) {}
+}
+
+message EndSession {
+  int32 port = 1;
+}
+
+message AskProgressRequest {
+  string name = 1;
+}
+
+message RegisterRequest {
+  string name = 1;
+}
+
+message RegisterResponse {
+  bool valid_name = 1;
+  bool available_server = 2;
+}
+
+message SessionLoadProgress {
+  int32 players_remaining = 1;
+  repeated string name = 2;
+}
+
+message PortRequest {
+  string name = 1;
+}
+
+message PortResponse {
+  int32 port = 1;
+}
