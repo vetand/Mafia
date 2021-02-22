@@ -9,7 +9,7 @@ from protocol import Protocol, DataType
 
 class Client:
     def __init__(self, channels, rate, chunk_size):
-        self._serverIP = 'localhost'
+        self._serverIP = '54.237.97.163'
         self._chunk_length = 11360
         self._server_port = 50055
         self._current_room_number = -1

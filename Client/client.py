@@ -15,7 +15,7 @@ import play_room_requests_pb2_grpc
 
 class Client:
     def __init__(self):
-        self._address = 'localhost'
+        self._address = '54.237.97.163'
         self._wait_room_port = 50051
 
         self._progress_lock = threading.Lock()
