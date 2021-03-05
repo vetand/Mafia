@@ -7,6 +7,10 @@ import threading
 import time
 import random
 import copy
+import json
+import os
+import requests
+import time
 
 import play_room_requests_pb2
 import play_room_requests_pb2_grpc
@@ -24,6 +28,7 @@ class Server(play_room_requests_pb2_grpc.PlayRoomRequests):
         self._address = '0.0.0.0:50051'
         self._port = port
         self._stop_event = stop_event
+        self._start_play_time = dict()
 
         self._active_players = 0
         self._players_made_decision = 0
@@ -129,6 +134,10 @@ class Server(play_room_requests_pb2_grpc.PlayRoomRequests):
                 mafias += self._is_mafia(name)
                 others += (1 != self._is_mafia(name))
         if mafias == 0 or mafias >= others:
+            if mafias == 0:
+                self._winners = ['commoner', 'commissar']
+            else:
+                self._winners = ['mafia']
             self._game_finished = True
             for name in self._roles.keys():
                 self._known_roles.add(name)
@@ -157,6 +166,7 @@ class Server(play_room_requests_pb2_grpc.PlayRoomRequests):
 
             self._roles[name] = role
             self._alive[name] = True
+            self._start_play_time[name] = time.time()
             self._prev_heartbeat[name] = time.time()
 
             return play_room_requests_pb2.NewRoleAssignment(role = role)
@@ -194,7 +204,33 @@ class Server(play_room_requests_pb2_grpc.PlayRoomRequests):
                     self._change_day()
         return request
 
+    def _send_game_statistics(self):
+        # register all players, is the name already exists nothing happens
+        for name in self._alive.keys():
+            request_data = dict()
+            request_data['name'] = name
+            request_data['gender'] = 'undefined'
+            request_data['email'] = 'none'
+            url = 'http://webserver:5000/mafia/api/v1.0/players'
+            headers = {'Content-Type': 'application/json'}
+            requests.post(url, json = json.dumps(request_data), headers=headers)
+
+        player_list = requests.get('http://webserver:5000/mafia/api/v1.0/players').json()
+
+        for player_obj in player_list:
+            name = player_obj['name']
+            if name in self._alive.keys():
+                victory = self._roles[name] in self._winners
+                add_time = time.time() - self._start_play_time[name]
+                request_data = dict()
+                request_data['time'] = int(add_time)
+                request_data['victory'] = victory
+                num = player_obj['player_url'].split('/')[-1]
+                url = 'http://webserver:5000/mafia/api/v1.0/players/{}/stats'.format(num)
+                requests.put(url, json = json.dumps(request_data))
+
     def _detach_port(self):
+        self._send_game_statistics()
         with grpc.insecure_channel(self._address) as channel:
             stub = wait_room_requests_pb2_grpc.WaitRoomReqtestsStub(channel)
             message = wait_room_requests_pb2.EndSession(port = self._port)
