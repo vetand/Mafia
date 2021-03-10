@@ -18,6 +18,8 @@ import play_room_requests_pb2_grpc
 import wait_room_requests_pb2
 import wait_room_requests_pb2_grpc
 
+from graphQLClient import graphQLClient as GameInfoClient
+
 PLAYERS_REQUIRED = 4
 TURN_TIMEOUT = 30.0
 PLAYER_TIMEOUT = 60.0
@@ -166,6 +168,11 @@ class Server(play_room_requests_pb2_grpc.PlayRoomRequests):
 
             self._roles[name] = role
             self._alive[name] = True
+
+            if self._active_players == PLAYERS_REQUIRED:
+                self._client = GameInfoClient("http://gamestat:8000/")
+                self._global_gameID = self._client.send_start_game_message(list(self._alive.keys()))
+
             self._start_play_time[name] = time.time()
             self._prev_heartbeat[name] = time.time()
 
@@ -211,23 +218,32 @@ class Server(play_room_requests_pb2_grpc.PlayRoomRequests):
             request_data['name'] = name
             request_data['gender'] = 'undefined'
             request_data['email'] = 'none'
-            url = 'http://webserver:5000/mafia/api/v1.0/players'
+            url = 'http://playerstat:5000/mafia/api/v1.0/players'
             headers = {'Content-Type': 'application/json'}
             requests.post(url, json = json.dumps(request_data), headers=headers)
 
-        player_list = requests.get('http://webserver:5000/mafia/api/v1.0/players').json()
+        player_list = requests.get('http://playerstat:5000/mafia/api/v1.0/players').json()
+
+        winners = []
+        losers = []
 
         for player_obj in player_list:
             name = player_obj['name']
             if name in self._alive.keys():
                 victory = self._roles[name] in self._winners
+                if victory:
+                    winners.append(name)
+                else:
+                    losers.append(name)
                 add_time = time.time() - self._start_play_time[name]
                 request_data = dict()
                 request_data['time'] = int(add_time)
                 request_data['victory'] = victory
                 num = player_obj['player_url'].split('/')[-1]
-                url = 'http://webserver:5000/mafia/api/v1.0/players/{}/stats'.format(num)
+                url = 'http://playerstat:5000/mafia/api/v1.0/players/{}/stats'.format(num)
                 requests.put(url, json = json.dumps(request_data))
+
+        self._client.send_game_result_message(self._global_gameID, winners, losers)
 
     def _detach_port(self):
         self._send_game_statistics()
