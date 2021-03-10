@@ -1,4 +1,6 @@
 # Mafia
+#### New
+10.03 - довавлен graphQL сервис со статистикой по играм
 ### Запуск
 
 ```pip install -r Client/requirements.txt```
